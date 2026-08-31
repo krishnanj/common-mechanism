@@ -61,8 +61,7 @@ class ScreenIO:
         self.nt_path = f"{self.input_prefix}.cleaned.fasta"
         self.aa_path = f"{self.input_prefix}.faa"
         self.nc_path = f"{self.input_prefix}.noncoding.fasta"
-        # Step 6: separate file for direct protein sequences only; aa_path mixes 6-frame translations with
-        # protein input, so blastp needs its own input file
+        # Step 2: protein queries go here; aa_path also contains 6-frame translations so blastp needs its own file
         self.protein_path = f"{self.input_prefix}.protein.faa"
 
         # Get configuration based on defaults and CLI args (including YAML config if supplied)
@@ -131,7 +130,7 @@ class ScreenIO:
 
         for record in records:
             try:
-                # Step 6: detect whether each record is protein or nucleotide
+                # Step 2: detect protein or nucleotide input
                 protein = is_protein_specific(str(record.seq))
                 if protein:
                     logger.info(
@@ -164,7 +163,7 @@ class ScreenIO:
                 queries[query.name] = query
                 if MINIMUM_QUERY_LENGTH <= len(record.seq) <= MAXIMUM_QUERY_LENGTH:
                     # Creating new SeqRecord to avoid overwriting the seq_record object inside query and preserve the original seq id
-                    # Step 6: keep protein records out of nt_path so blastn and cmscan never see them
+                    # Step 2: protein records stay out of nt_path so blastn and cmscan never see them
                     if not query.is_protein:
                         updated_records.append(
                             SeqRecord(record.seq, id=query.name, description="")

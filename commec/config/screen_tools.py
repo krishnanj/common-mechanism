@@ -29,7 +29,7 @@ class ScreenTools:
     def __init__(self, params: ScreenIO):
         self.biorisk: HmmerHandler = None
         self.regulated_protein: BlastXHandler = None
-        # Step 6: blastp handler runs alongside blastx; blastx searches NT queries, blastp searches protein queries
+        # Step 4: blastp handler for protein queries
         self.regulated_protein_blastp: BlastPHandler = None
         self.regulated_nt: BlastNHandler = None
         self.low_concern_hmm: HmmerHandler = None
@@ -68,7 +68,7 @@ class ScreenTools:
             self.regulated_protein.arguments_dictionary["-mt_mode"] = params.config[
                 "blast_mt_mode"
             ]
-            # Step 6: blastp uses the same protein database as blastx but takes protein input directly
+            # Step 4: same protein database as blastx but takes protein input directly
             self.regulated_protein_blastp = BlastPHandler(
                 params.config["databases"]["best_match"]["protein"]["path"],
                 input_file=params.protein_path,

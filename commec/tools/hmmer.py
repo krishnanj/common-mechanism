@@ -130,8 +130,7 @@ def readhmmer(fileh):
     hmmer["ali to"] = pd.to_numeric(hmmer["ali to"])
     hmmer["qlen"] = pd.to_numeric(hmmer["qlen"])
     hmmer["query name"] = hmmer["query name"].astype(str)
-    # Step 6: NT query names end in _N (frame 1-6); protein query names have no such suffix.
-    # Use 0 as a sentinel for protein input so downstream code can branch on it.
+    # Step 6: use frame 0 as a sentinel for protein input; NT frames are 1-6.
     hmmer["frame"] = (
         pd.to_numeric(hmmer["query name"].str.split("_").str[-1], errors="coerce")
         .fillna(0)
@@ -208,8 +207,7 @@ def recalculate_hmmer_query_coordinates(hmmer: pd.DataFrame):
         "passed to calculate nt coordinates, ensure that the dataframe has "
         "been processed to include nucleotide query length data."
     )
-    # Step 6: frame 0 marks protein input; those coords are already in AA space, so keep them.
-    # Only convert NT-derived frames (1-6) to nucleotide coordinates.
+    # Step 6: frame 0 marks protein input; skip coordinate conversion for those rows.
     nt_mask = hmmer["frame"] != 0
     hmmer["q. start"] = hmmer["ali from"].copy()
     hmmer["q. end"] = hmmer["ali to"].copy()
@@ -231,8 +229,7 @@ def append_nt_querylength_info(hmmer: pd.DataFrame, queries: dict[str, Query]):
     """
 
     def _base_name(q_name: str) -> str:
-        # Step 6: NT query names end in _N; strip that suffix to get the original query name.
-        # Protein query names have no frame suffix so use them as-is.
+        # Step 6: strip frame suffix (_N) from NT query names; protein names have no suffix.
         suffix = q_name.split("_")[-1]
         if suffix.isdigit():
             return q_name[: -(len(suffix) + 1)]

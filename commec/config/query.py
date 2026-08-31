@@ -26,7 +26,7 @@ class Query:
         self._seq_record = seq_record
         self.name = self.create_id(seq_record.id)
         self.description = seq_record.description[len(seq_record.id) :].strip()
-        # Step 6: track sequence type so later steps know whether to translate or not
+        # Step 1: track whether this query is protein or nucleotide
         self.is_protein: bool = is_protein
         self.non_coding_regions: list[
             tuple[int, int]

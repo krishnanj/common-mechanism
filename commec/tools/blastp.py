@@ -19,7 +19,7 @@ class BlastPHandler(BlastHandler):
     Modify arguments_dictionary to change arguments passed to the CLI.
     """
 
-    # Step 6: protein input goes directly to blastp; blastx is skipped because there is nothing to translate
+    # Step 3: protein input goes directly to blastp; blastx is skipped
 
     def __init__(
         self,

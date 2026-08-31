@@ -435,7 +435,7 @@ class Screen:
         # Ensure that the translation aa is cleared.
         with open(self.params.aa_path, "w", encoding="utf-8"):
             ...
-        # Step 6: clear protein_path so blastp starts from a clean file each run
+        # Step 5: clear protein_path so blastp starts from a clean file each run
         with open(self.params.protein_path, "w", encoding="utf-8"):
             ...
 
@@ -473,7 +473,7 @@ class Screen:
                 # Only translate if valid.
                 try:
                     query.translate(self.params.aa_path)
-                    # Step 6: also write protein queries to protein_path for blastp input
+                    # Step 5: write protein queries to protein_path for blastp input
                     if query.is_protein:
                         query.translate(self.params.protein_path)
                 except TranslationError as e:
@@ -707,7 +707,7 @@ class Screen:
                 f"Output of protein taxonomy search could not be processed: {self.database_tools.regulated_protein.out_file}"
             )
 
-        # Step 6: run blastp for any protein input queries; skip if the protein_path file is empty
+        # Step 5: run blastp for protein input queries; skip if no protein sequences were found
         protein_input_has_sequences = (
             self.database_tools.regulated_protein_blastp is not None
             and os.path.isfile(self.params.protein_path)
