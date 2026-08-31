@@ -49,6 +49,7 @@ Output file handling:
 import argparse
 import datetime
 import logging
+import os
 import sys
 import time
 import traceback
@@ -434,6 +435,9 @@ class Screen:
         # Ensure that the translation aa is cleared.
         with open(self.params.aa_path, "w", encoding="utf-8"):
             ...
+        # Step 6: clear protein_path so blastp starts from a clean file each run
+        with open(self.params.protein_path, "w", encoding="utf-8"):
+            ...
 
         try:
             for query in self.queries.values():
@@ -469,6 +473,9 @@ class Screen:
                 # Only translate if valid.
                 try:
                     query.translate(self.params.aa_path)
+                    # Step 6: also write protein queries to protein_path for blastp input
+                    if query.is_protein:
+                        query.translate(self.params.protein_path)
                 except TranslationError as e:
                     logger.error(
                         "An error occured when translating %s:\n %s",
@@ -677,6 +684,7 @@ class Screen:
         """
         Call `run_blastx.sh` followed by `check_reg_path.py` to add regulated
         pathogen protein screening results to `screen_file`.
+        For protein input queries, blastp is run instead of blastx.
         """
         self.database_tools.regulated_protein.search()
         if not self.database_tools.regulated_protein.validate_output():
@@ -698,6 +706,32 @@ class Screen:
             raise RuntimeError(
                 f"Output of protein taxonomy search could not be processed: {self.database_tools.regulated_protein.out_file}"
             )
+
+        # Step 6: run blastp for any protein input queries; skip if the protein_path file is empty
+        protein_input_has_sequences = (
+            self.database_tools.regulated_protein_blastp is not None
+            and os.path.isfile(self.params.protein_path)
+            and os.path.getsize(self.params.protein_path) > 0
+        )
+        if protein_input_has_sequences:
+            self.database_tools.regulated_protein_blastp.search()
+            if not self.database_tools.regulated_protein_blastp.validate_output():
+                self.reset_query_statuses(ScreenStep.TAXONOMY_AA, ScreenStatus.ERROR)
+                raise RuntimeError(
+                    "ERROR: Expected blastp output not created: "
+                    + self.database_tools.regulated_protein_blastp.out_file
+                )
+            exit_status = parse_taxonomy_hits(
+                self.database_tools.regulated_protein_blastp,
+                self.screen_data,
+                self.queries,
+                ScreenStep.TAXONOMY_AA,
+                self.params.config["threads"],
+            )
+            if exit_status != 0:
+                raise RuntimeError(
+                    f"Output of blastp taxonomy search could not be processed: {self.database_tools.regulated_protein_blastp.out_file}"
+                )
 
     def screen_nucleotides(self):
         """

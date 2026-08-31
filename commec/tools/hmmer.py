@@ -130,8 +130,13 @@ def readhmmer(fileh):
     hmmer["ali to"] = pd.to_numeric(hmmer["ali to"])
     hmmer["qlen"] = pd.to_numeric(hmmer["qlen"])
     hmmer["query name"] = hmmer["query name"].astype(str)
-    # Extract the frame information.
-    hmmer["frame"] = hmmer["query name"].str.split("_").str[-1].astype(int)
+    # Step 6: NT query names end in _N (frame 1-6); protein query names have no such suffix.
+    # Use 0 as a sentinel for protein input so downstream code can branch on it.
+    hmmer["frame"] = (
+        pd.to_numeric(hmmer["query name"].str.split("_").str[-1], errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
     return hmmer
 
 
@@ -203,12 +208,20 @@ def recalculate_hmmer_query_coordinates(hmmer: pd.DataFrame):
         "passed to calculate nt coordinates, ensure that the dataframe has "
         "been processed to include nucleotide query length data."
     )
-    hmmer["q. start"], hmmer["q. end"] = convert_protein_to_nucleotide_coords(
-        hmmer["frame"].to_numpy(),
-        hmmer["ali from"].to_numpy(),
-        hmmer["ali to"].to_numpy(),
-        hmmer["nt_qlen"].to_numpy(),
-    )
+    # Step 6: frame 0 marks protein input; those coords are already in AA space, so keep them.
+    # Only convert NT-derived frames (1-6) to nucleotide coordinates.
+    nt_mask = hmmer["frame"] != 0
+    hmmer["q. start"] = hmmer["ali from"].copy()
+    hmmer["q. end"] = hmmer["ali to"].copy()
+    if nt_mask.any():
+        nt_start, nt_end = convert_protein_to_nucleotide_coords(
+            hmmer.loc[nt_mask, "frame"].to_numpy(),
+            hmmer.loc[nt_mask, "ali from"].to_numpy(),
+            hmmer.loc[nt_mask, "ali to"].to_numpy(),
+            hmmer.loc[nt_mask, "nt_qlen"].to_numpy(),
+        )
+        hmmer.loc[nt_mask, "q. start"] = nt_start
+        hmmer.loc[nt_mask, "q. end"] = nt_end
 
 
 def append_nt_querylength_info(hmmer: pd.DataFrame, queries: dict[str, Query]):
@@ -216,4 +229,13 @@ def append_nt_querylength_info(hmmer: pd.DataFrame, queries: dict[str, Query]):
     Take the hmmer output, and add a series (nt_qlen)
     of the true nt length based on query name.
     """
-    hmmer["nt_qlen"] = [queries[q[:-2]].length for q in hmmer["query name"]]
+
+    def _base_name(q_name: str) -> str:
+        # Step 6: NT query names end in _N; strip that suffix to get the original query name.
+        # Protein query names have no frame suffix so use them as-is.
+        suffix = q_name.split("_")[-1]
+        if suffix.isdigit():
+            return q_name[: -(len(suffix) + 1)]
+        return q_name
+
+    hmmer["nt_qlen"] = [queries[_base_name(q)].length for q in hmmer["query name"]]

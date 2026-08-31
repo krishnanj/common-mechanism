@@ -187,12 +187,13 @@ def test_write_clean_fasta_handles_non_ascii_characters(
             False,
             id="below_threshold",
         ),
-        # Amino acid codes are mostly not IUPAC nucleotide codes, so this blows the threshold
+        # Protein sequences are detected and routed to the protein pipeline before
+        # substitute_non_iupac() runs, so no "may not be nucleotide" warning is raised
         pytest.param(
             "is_protein_sequence.fasta",
             "haemagglutinin_fragment",
-            True,
-            id="above_threshold",
+            False,
+            id="protein_sequence_detected",
         ),
     ],
 )
@@ -230,6 +231,26 @@ def test_parse_input_fasta_warns_when_substitutions_exceed_threshold(
 
     assert len(not_dna_warnings) == 1
     assert record_id in not_dna_warnings[0]
+
+
+def test_parse_input_fasta_detects_protein_sequence(
+    test_data_dir, database_dir, tmp_path, caplog
+):
+    input_fasta = os.path.join(test_data_dir, "is_protein_sequence.fasta")
+    with patch(
+        "sys.argv",
+        ["test.py", "--skip-tx", input_fasta, "-d", database_dir, "-o", str(tmp_path)],
+    ):
+        parser = ScreenArgumentParser()
+        add_args(parser)
+        screen_io = ScreenIO(parser.parse_args())
+        screen_io.setup()
+
+    with caplog.at_level("INFO"):
+        queries = screen_io.parse_input_fasta()
+
+    assert queries["haemagglutinin_fragment"].is_protein
+    assert any("routing to protein pipeline" in r.getMessage() for r in caplog.records)
 
 
 @pytest.mark.parametrize(

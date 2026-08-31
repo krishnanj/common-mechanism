@@ -187,7 +187,9 @@ def parse_biorisk_hits(
         logger.debug("\tProcessing query: %s", affected_query)
         biorisk_overall: ScreenStatus = ScreenStatus.PASS
 
-        query_data, _ = data.get_query(affected_query)
+        # Step 6: get_query strips frame suffixes (_1 to _6) for NT queries; protein queries
+        # have no suffix, so base_query_name equals affected_query directly
+        query_data, base_query_name = data.get_query(affected_query)
         if not query_data:
             logger.error(
                 "Query during hmmscan could not be found! [%s]", affected_query
@@ -250,8 +252,8 @@ def parse_biorisk_hits(
             log_message = (
                 f"\t --> {regulation_str} found at coordinates: {match_string}."
             )
-            logger.debug(f"{affected_query[:-2]:<25}" + log_message)
-            log_container[affected_query[:-2]].append(log_message)
+            logger.debug(f"{base_query_name:<25}" + log_message)
+            log_container[base_query_name].append(log_message)
 
             # Deal with whether this biorisk should collapse into an existing hit or not.
 
