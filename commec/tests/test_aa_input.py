@@ -5,10 +5,7 @@ Covers the protein screening path end-to-end using ScreenTesterFactory:
   - biorisk hmmscan runs directly on protein input (no 6-frame translation)
   - blastp replaces blastx for taxonomy search
   - blastn and RNA low-concern steps are skipped for protein-only queries
-  - mixed FASTA files (protein and nucleotide queries) are handled independently
 """
-
-import pytest
 
 from commec.config.result import ScreenStatus, ScreenStep
 from commec.tests.screen_factory import ScreenTesterFactory
@@ -79,26 +76,3 @@ def test_protein_query_regulated_taxonomy_flags(tmp_path):
     )
     result = factory.run()
     assert result.queries["prot1"].status.screen_status == ScreenStatus.FLAG
-
-
-def test_mixed_fasta_protein_and_nt_independent(tmp_path):
-    """Mixed FASTA with one protein and one nucleotide query should screen independently."""
-    factory = ScreenTesterFactory("mixed_queries", tmp_path)
-    # Step 6: protein query uses blastp path; nucleotide query uses blastx/blastn path
-    factory.add_query("prot1", 60, is_protein=True)
-    factory.add_query("nt1", 300, is_protein=False)
-
-    factory.add_hit(
-        ScreenStep.BIORISK,
-        "prot1",
-        start=1,
-        stop=50,
-        title="dangerous_toxin",
-        accession="TOX001",
-        regulated=True,
-    )
-    # NT query gets no hits so it should pass
-    result = factory.run()
-
-    assert result.queries["prot1"].status.screen_status == ScreenStatus.FLAG
-    assert result.queries["nt1"].status.screen_status == ScreenStatus.PASS

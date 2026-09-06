@@ -32,6 +32,8 @@ Screen run logic:
   --skip-tx             Skip taxonomy homology search (only toxins and other proteins included in the biorisk database will be flagged)
   --skip-nt             Skip nucleotide search (regulated pathogens will only be identified based on
                         protein hits)
+  --protein             Treat all input sequences as amino acid sequences. Use when the input FASTA
+                        contains protein rather than nucleotide sequences.
 
 Parallelisation:
   -t THREADS, --threads THREADS
@@ -174,6 +176,16 @@ def add_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         help=(
             "Skip nucleotide search (regulated pathogens will only be"
             " identified based on biorisk database and protein hits)"
+        ),
+    )
+
+    screen_logic_group.add_argument(
+        "--protein",
+        dest="protein_input",
+        action="store_true",
+        help=(
+            "Treat all input sequences as amino acid sequences. "
+            "Use when the input FASTA contains protein rather than nucleotide sequences."
         ),
     )
 
@@ -447,6 +459,7 @@ class Screen:
 
                 # Link query to the output data.
                 qr = QueryResult(query.original_name, query.description, query.length)
+                qr.is_protein = query.is_protein
                 self.screen_data.queries[query.name] = qr
                 query.result = qr
 
@@ -813,10 +826,24 @@ class Screen:
         # Run the low_concern tools:
         logger.debug("\t...running low-concern hmmer.")
         self.database_tools.low_concern_hmm.search()
-        logger.debug("\t...running low-concern blastn")
-        self.database_tools.low_concern_blastn.search()
-        logger.debug("\t...running low-concern cmscan")
-        self.database_tools.low_concern_cmscan.search()
+
+        # blastn and cmscan require a nucleotide FASTA. For protein-only input,
+        # protein records are not written to the nucleotide FASTA, so those files
+        # are empty. Skip both steps and pass None to the parser.
+        protein_only = self.params.config.get("protein_input", False)
+        if protein_only:
+            logger.info("\t...skipping low-concern blastn and cmscan (protein input).")
+            self.reset_query_statuses(ScreenStep.LOW_CONCERN_DNA, ScreenStatus.SKIP)
+            self.reset_query_statuses(ScreenStep.LOW_CONCERN_RNA, ScreenStatus.SKIP)
+            rna_handler = None
+            dna_handler = None
+        else:
+            logger.debug("\t...running low-concern blastn")
+            self.database_tools.low_concern_blastn.search()
+            logger.debug("\t...running low-concern cmscan")
+            self.database_tools.low_concern_cmscan.search()
+            rna_handler = self.database_tools.low_concern_cmscan
+            dna_handler = self.database_tools.low_concern_blastn
 
         # Update Screen Data with low_concern outputs.
         low_concern_desc = pd.read_csv(
@@ -825,8 +852,8 @@ class Screen:
 
         parse_low_concern_hits(
             self.database_tools.low_concern_hmm,
-            self.database_tools.low_concern_cmscan,
-            self.database_tools.low_concern_blastn,
+            rna_handler,
+            dna_handler,
             self.queries,
             low_concern_desc,
         )

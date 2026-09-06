@@ -92,7 +92,7 @@
     if (left + w > 100) left = Math.max(0, 100 - w);
     return { left: left, w: w };
   };
-  Report.prototype.coord = function (h) { return this.num(h.qs) + "–" + this.num(h.qe) + " bp"; };
+  Report.prototype.coord = function (h) { return this.num(h.qs) + "–" + this.num(h.qe) + (h.isProtein ? " aa" : " bp"); };
 
   // Group hits by organism, choose a representative, sort by severity + e-value.
   Report.prototype.model = function (s) {

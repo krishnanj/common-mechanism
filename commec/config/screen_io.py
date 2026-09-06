@@ -130,14 +130,21 @@ class ScreenIO:
 
         for record in records:
             try:
-                # Step 2: detect protein or nucleotide input
-                protein = is_protein_specific(str(record.seq))
-                if protein:
-                    logger.info(
-                        "Query %s: detected as amino acid sequence, routing to protein pipeline",
-                        record.id,
-                    )
+                # Step 2: --protein flag routes all sequences to the protein pipeline;
+                # per-sequence detection is a safety net for unlabelled protein input only.
+                flag_protein = self.config.get("protein_input", False)
+                if flag_protein:
+                    protein = True
                 else:
+                    protein = is_protein_specific(str(record.seq))
+                    if protein:
+                        logger.warning(
+                            "Query %s: amino acid characters detected in input. "
+                            "Use --protein to declare protein input explicitly. "
+                            "Routing to protein pipeline.",
+                            record.id,
+                        )
+                if not protein:
                     substitutions = substitute_non_iupac(record)
                     if substitutions:
                         logger.warning(

@@ -246,11 +246,13 @@ def test_parse_input_fasta_detects_protein_sequence(
         screen_io = ScreenIO(parser.parse_args())
         screen_io.setup()
 
-    with caplog.at_level("INFO"):
+    with caplog.at_level("WARNING"):
         queries = screen_io.parse_input_fasta()
 
     assert queries["haemagglutinin_fragment"].is_protein
-    assert any("routing to protein pipeline" in r.getMessage() for r in caplog.records)
+    assert any(
+        "amino acid characters detected" in r.getMessage() for r in caplog.records
+    )
 
 
 @pytest.mark.parametrize(
