@@ -757,6 +757,12 @@ class Screen:
         # By Default, this should be overriden.
         self.reset_query_statuses(ScreenStep.TAXONOMY_NT, ScreenStatus.ERROR)
 
+        # Protein input has no nucleotide sequences, so nucleotide taxonomy is meaningless.
+        if self.params.config.get("protein_input", False):
+            logger.info("\t...skipping nucleotide search (protein input).")
+            self.reset_query_statuses(ScreenStep.TAXONOMY_NT, ScreenStatus.SKIP)
+            return
+
         # Calculate non-coding information for each Query.
         calculate_noncoding_regions_per_query(
             self.database_tools.regulated_protein, self.queries

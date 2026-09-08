@@ -1386,6 +1386,9 @@ def screen():
         )
     control_list_config["regions"] = regions
 
+    if request.form.get("protein_input") == "1":
+        run_config["protein_input"] = True
+
     # Required run label -> output-file prefix, sanitised to a filename-safe
     # token (timestamp fallback only if the label is all punctuation).
     label = (request.form.get("label") or "").strip()

@@ -160,6 +160,26 @@ def test_selected_regions_are_recorded_in_run_config(tmp_path, client):
     assert config["databases"]["control_lists"]["regions"] == "US,CA"
 
 
+def test_protein_input_flag_propagates_to_config(tmp_path, client):
+    """Checking 'Protein input' in the GUI must set protein_input: true in the saved config."""
+    response = _submit(client, protein_input="1")
+
+    assert response.status_code == 200
+    run_dir = next(path for path in (tmp_path / "runs").iterdir() if path.is_dir())
+    config = yaml.safe_load((run_dir / "config.used.yaml").read_text(encoding="utf-8"))
+    assert config.get("protein_input") is True
+
+
+def test_protein_input_flag_absent_when_unchecked(tmp_path, client):
+    """When the protein input checkbox is not submitted, protein_input must not appear in config."""
+    response = _submit(client)
+
+    assert response.status_code == 200
+    run_dir = next(path for path in (tmp_path / "runs").iterdir() if path.is_dir())
+    config = yaml.safe_load((run_dir / "config.used.yaml").read_text(encoding="utf-8"))
+    assert config.get("protein_input") is not True
+
+
 def test_hidden_single_country_alias_is_accepted(tmp_path, client):
     response = _submit(client, regions="UK")
 
