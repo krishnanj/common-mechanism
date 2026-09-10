@@ -60,7 +60,11 @@ import pandas as pd
 from Bio.Data.CodonTable import TranslationError
 
 import commec.control_list as control_list
-from commec.config.constants import MAXIMUM_QUERY_LENGTH, MINIMUM_QUERY_LENGTH
+from commec.config.constants import (
+    MAXIMUM_QUERY_LENGTH,
+    MINIMUM_PROTEIN_QUERY_LENGTH,
+    MINIMUM_QUERY_LENGTH,
+)
 from commec.config.json_io import encode_screen_data_to_json
 from commec.config.query import Query
 from commec.config.result import (
@@ -464,12 +468,17 @@ class Screen:
                 query.result = qr
 
                 # Determine out-of-range queries as skipped:
-                if query.length < MINIMUM_QUERY_LENGTH:
+                min_length = (
+                    MINIMUM_PROTEIN_QUERY_LENGTH
+                    if query.is_protein
+                    else MINIMUM_QUERY_LENGTH
+                )
+                if query.length < min_length:
                     logger.warning(
                         "%s length %i is less than %i",
                         query.name,
                         query.length,
-                        MINIMUM_QUERY_LENGTH,
+                        min_length,
                     )
                     qr.skip(ScreenStatus.SKIP_SHORT)
                     continue

@@ -130,20 +130,7 @@ class ScreenIO:
 
         for record in records:
             try:
-                # Step 2: --protein flag routes all sequences to the protein pipeline;
-                # per-sequence detection is a safety net for unlabelled protein input only.
-                flag_protein = self.config.get("protein_input", False)
-                if flag_protein:
-                    protein = True
-                else:
-                    protein = is_protein_specific(str(record.seq))
-                    if protein:
-                        logger.warning(
-                            "Query %s: amino acid characters detected in input. "
-                            "Use --protein to declare protein input explicitly. "
-                            "Routing to protein pipeline.",
-                            record.id,
-                        )
+                protein = self.config.get("protein_input", False)
                 if not protein:
                     substitutions = substitute_non_iupac(record)
                     if substitutions:
@@ -357,24 +344,6 @@ class ScreenIO:
     @property
     def should_do_low_concern_screening(self) -> bool:
         return True
-
-
-def is_protein_specific(sequence: str) -> bool:
-    """
-    Return True if the sequence contains at least one amino acid letter that
-    cannot appear in a DNA or RNA sequence under the IUPAC nucleotide alphabet.
-
-    Letters checked: D E F H I J K L M O P Q R S U V W X Y Z and their lowercase
-    equivalents. Any one of these is sufficient to confirm the sequence is protein.
-
-    Limitation: a protein sequence composed only of letters shared with the IUPAC
-    nucleotide alphabet (A, C, G, T and ambiguity codes) will be classified as
-    nucleotide. This is rare in practice and is an accepted limitation for now.
-    """
-    iupac_nt = frozenset(
-        IUPACData.ambiguous_dna_letters + IUPACData.ambiguous_rna_letters
-    )
-    return any(c.upper() not in iupac_nt for c in sequence if c.isalpha())
 
 
 def substitute_non_iupac(record: SeqRecord) -> int:

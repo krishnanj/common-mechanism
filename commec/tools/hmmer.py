@@ -229,10 +229,18 @@ def append_nt_querylength_info(hmmer: pd.DataFrame, queries: dict[str, Query]):
     """
 
     def _base_name(q_name: str) -> str:
-        # Step 6: strip frame suffix (_N) from NT query names; protein names have no suffix.
+        # A direct hit in queries means this is a protein query; its name has no frame suffix
+        # to strip. Without this check, a protein query named e.g. ORF_1 would have _1 stripped
+        # to ORF, which is not a key in queries and raises a KeyError.
+        if q_name in queries:
+            return q_name
         suffix = q_name.split("_")[-1]
         if suffix.isdigit():
             return q_name[: -(len(suffix) + 1)]
         return q_name
 
     hmmer["nt_qlen"] = [queries[_base_name(q)].length for q in hmmer["query name"]]
+    # readhmmer sets frame by parsing the query name suffix. A protein query named ORF_1
+    # would be assigned frame=1 instead of frame=0. Correct that here using the queries dict
+    # as the authoritative source: any row whose query name is a direct key is protein (frame=0).
+    hmmer.loc[hmmer["query name"].isin(queries), "frame"] = 0

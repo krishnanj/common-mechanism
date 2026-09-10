@@ -131,6 +131,9 @@ class ScreenTesterFactory:
             "--verbose",
         ]
 
+        if any(self.query_is_protein.values()):
+            arguments.append("--protein")
+
         arguments.extend(args)
 
         print("Using the following Control Lists: ", ld.CONTROL_LISTS)
@@ -173,8 +176,6 @@ class ScreenTesterFactory:
 
     def add_query(self, name, size, is_protein=False):
         if is_protein:
-            # Step 6: use amino acid letters absent from the IUPAC nucleotide alphabet
-            # so is_protein_specific() correctly classifies the query as protein input
             protein_chars = "MFLIPWEQ"
             self.queries[name] = (protein_chars * (size // len(protein_chars) + 1))[
                 :size

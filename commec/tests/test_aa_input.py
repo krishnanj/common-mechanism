@@ -56,6 +56,28 @@ def test_protein_query_biorisk_warn(tmp_path):
     assert result.queries["prot1"].status.screen_status == ScreenStatus.WARN
 
 
+def test_protein_query_with_numeric_suffix_in_name(tmp_path):
+    """Protein query named ORF_1 must not cause a KeyError in append_nt_querylength_info.
+
+    The _base_name helper previously stripped the trailing _1 from ORF_1 because it
+    looks like an NT frame suffix, producing ORF which is not a key in the queries dict.
+    The fix checks the queries dict directly before attempting suffix stripping.
+    """
+    factory = ScreenTesterFactory("prot_numeric_suffix", tmp_path)
+    factory.add_query("ORF_1", 60, is_protein=True)
+    factory.add_hit(
+        ScreenStep.BIORISK,
+        "ORF_1",
+        start=1,
+        stop=50,
+        title="dangerous_toxin",
+        accession="TOX001",
+        regulated=True,
+    )
+    result = factory.run()
+    assert result.queries["ORF_1"].status.screen_status == ScreenStatus.FLAG
+
+
 def test_protein_query_regulated_taxonomy_flags(tmp_path):
     """Protein query whose blastp best match is a regulated pathogen should be FLAG."""
     factory = ScreenTesterFactory("prot_tax_flag", tmp_path)

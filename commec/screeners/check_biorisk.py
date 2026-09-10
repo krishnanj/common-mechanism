@@ -14,6 +14,7 @@ import pandas as pd
 
 from commec.config.constants import (
     BIORISK_LONG_QUERY_EVALUE_THRESHOLD,
+    BIORISK_SHORT_QUERY_AA_THRESHOLD,
     BIORISK_SHORT_QUERY_EVALUE_EXPONENT,
     BIORISK_SHORT_QUERY_NT_THRESHOLD,
 )
@@ -82,18 +83,28 @@ def biorisk_evalue_filter(hmmer: pd.DataFrame) -> pd.DataFrame:
     """
     Filter hmmscan hits by E-value, using a length-dependent threshold for short queries.
 
-    For queries shorter than BIORISK_SHORT_QUERY_NT_THRESHOLD nucleotides, the cutoff is:
+    For queries shorter than the length threshold, the cutoff is:
         E-value < 1 / (1 + nt_qlen ^ BIORISK_SHORT_QUERY_EVALUE_EXPONENT)
     For all other queries the cutoff is BIORISK_LONG_QUERY_EVALUE_THRESHOLD.
 
-    Expects numeric 'E-value' and 'nt_qlen' columns; coerces them if needed.
+    Protein rows (frame == 0) use BIORISK_SHORT_QUERY_AA_THRESHOLD because their
+    nt_qlen holds amino acid length, not nucleotide length.
+
+    Expects numeric 'E-value', 'nt_qlen', and 'frame' columns; coerces them if needed.
     Returns a filtered copy of the input DataFrame.
     """
     df = hmmer.copy()
     df["E-value"] = pd.to_numeric(df["E-value"], errors="coerce")
     df["nt_qlen"] = pd.to_numeric(df["nt_qlen"], errors="coerce")
 
-    short_query = df["nt_qlen"] < BIORISK_SHORT_QUERY_NT_THRESHOLD
+    is_protein_row = df["frame"] == 0
+    threshold = is_protein_row.map(
+        {
+            True: BIORISK_SHORT_QUERY_AA_THRESHOLD,
+            False: BIORISK_SHORT_QUERY_NT_THRESHOLD,
+        }
+    )
+    short_query = df["nt_qlen"] < threshold
     short_cutoff = 1 / (1 + df["nt_qlen"] ** BIORISK_SHORT_QUERY_EVALUE_EXPONENT)
 
     mask = (short_query & (df["E-value"] < short_cutoff)) | (

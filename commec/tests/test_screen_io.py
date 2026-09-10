@@ -187,13 +187,13 @@ def test_write_clean_fasta_handles_non_ascii_characters(
             False,
             id="below_threshold",
         ),
-        # Protein sequences are detected and routed to the protein pipeline before
-        # substitute_non_iupac() runs, so no "may not be nucleotide" warning is raised
+        # Without --protein, a protein sequence is treated as nucleotide and the high
+        # substitution rate triggers the "may not be nucleotide" warning
         pytest.param(
             "is_protein_sequence.fasta",
             "haemagglutinin_fragment",
-            False,
-            id="protein_sequence_detected",
+            True,
+            id="protein_sequence_exceeds_substitution_threshold",
         ),
     ],
 )
@@ -231,28 +231,6 @@ def test_parse_input_fasta_warns_when_substitutions_exceed_threshold(
 
     assert len(not_dna_warnings) == 1
     assert record_id in not_dna_warnings[0]
-
-
-def test_parse_input_fasta_detects_protein_sequence(
-    test_data_dir, database_dir, tmp_path, caplog
-):
-    input_fasta = os.path.join(test_data_dir, "is_protein_sequence.fasta")
-    with patch(
-        "sys.argv",
-        ["test.py", "--skip-tx", input_fasta, "-d", database_dir, "-o", str(tmp_path)],
-    ):
-        parser = ScreenArgumentParser()
-        add_args(parser)
-        screen_io = ScreenIO(parser.parse_args())
-        screen_io.setup()
-
-    with caplog.at_level("WARNING"):
-        queries = screen_io.parse_input_fasta()
-
-    assert queries["haemagglutinin_fragment"].is_protein
-    assert any(
-        "amino acid characters detected" in r.getMessage() for r in caplog.records
-    )
 
 
 @pytest.mark.parametrize(

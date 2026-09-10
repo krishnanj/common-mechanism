@@ -96,9 +96,9 @@ def test_check_biorisk_return_codes(
 # ---------------------------------------------------------------------------
 
 
-def _make_hmmer(nt_qlen: int, evalue: float) -> pd.DataFrame:
+def _make_hmmer(nt_qlen: int, evalue: float, frame: int = 1) -> pd.DataFrame:
     """Return a minimal single-row hmmscan DataFrame."""
-    return pd.DataFrame({"E-value": [evalue], "nt_qlen": [nt_qlen]})
+    return pd.DataFrame({"E-value": [evalue], "nt_qlen": [nt_qlen], "frame": [frame]})
 
 
 def _short_cutoff(nt_qlen: float) -> float:
@@ -176,13 +176,14 @@ class TestBioriskEvalueFilterMultiRow:
                     BIORISK_LONG_QUERY_EVALUE_THRESHOLD * 10,  # long, filtered
                 ],
                 "nt_qlen": [nt_qlen_short, nt_qlen_short, nt_qlen_long, nt_qlen_long],
+                "frame": [1, 1, 1, 1],
             }
         )
         result = biorisk_evalue_filter(df)
         assert len(result) == 2
 
     def test_empty_dataframe_returns_empty(self):
-        df = pd.DataFrame({"E-value": [], "nt_qlen": []})
+        df = pd.DataFrame({"E-value": [], "nt_qlen": [], "frame": []})
         result = biorisk_evalue_filter(df)
         assert len(result) == 0
 
@@ -190,19 +191,19 @@ class TestBioriskEvalueFilterMultiRow:
         """readhmmer returns string columns; filter must coerce them."""
         nt_qlen = 100
         evalue = _short_cutoff(nt_qlen) * 0.5
-        df = pd.DataFrame({"E-value": [str(evalue)], "nt_qlen": [str(nt_qlen)]})
+        df = pd.DataFrame({"E-value": [str(evalue)], "nt_qlen": [str(nt_qlen)], "frame": [1]})
         result = biorisk_evalue_filter(df)
         assert len(result) == 1
 
     def test_non_numeric_evalues_are_dropped(self):
         """Rows with non-coercible E-values become NaN and should be excluded."""
-        df = pd.DataFrame({"E-value": ["not_a_number"], "nt_qlen": [100]})
+        df = pd.DataFrame({"E-value": ["not_a_number"], "nt_qlen": [100], "frame": [1]})
         result = biorisk_evalue_filter(df)
         assert len(result) == 0
 
     def test_input_dataframe_is_not_mutated(self):
         """The function must return a copy; the original dtypes must be unchanged."""
-        df = pd.DataFrame({"E-value": ["1e-25"], "nt_qlen": ["500"]})
+        df = pd.DataFrame({"E-value": ["1e-25"], "nt_qlen": ["500"], "frame": [1]})
         original_dtype_evalue = df["E-value"].dtype
         original_dtype_qlen = df["nt_qlen"].dtype
         _ = biorisk_evalue_filter(df)
@@ -217,6 +218,7 @@ class TestBioriskEvalueFilterMultiRow:
             {
                 "E-value": [evalue],
                 "nt_qlen": [nt_qlen],
+                "frame": [1],
                 "target name": ["some_target"],
                 "query name": ["some_query"],
             }
