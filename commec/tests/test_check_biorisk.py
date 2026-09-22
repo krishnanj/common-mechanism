@@ -191,7 +191,9 @@ class TestBioriskEvalueFilterMultiRow:
         """readhmmer returns string columns; filter must coerce them."""
         nt_qlen = 100
         evalue = _short_cutoff(nt_qlen) * 0.5
-        df = pd.DataFrame({"E-value": [str(evalue)], "nt_qlen": [str(nt_qlen)], "frame": [1]})
+        df = pd.DataFrame(
+            {"E-value": [str(evalue)], "nt_qlen": [str(nt_qlen)], "frame": [1]}
+        )
         result = biorisk_evalue_filter(df)
         assert len(result) == 1
 
