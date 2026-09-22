@@ -540,9 +540,12 @@ class Screen:
         _info = self.screen_data.database_info.search_tool_info
         _info.biorisk_search_info = _tools.biorisk.get_version_information()
         if self.params.should_do_protein_screening:
-            _info.protein_search_info = (
-                _tools.regulated_protein.get_version_information()
+            protein_tool = (
+                _tools.regulated_protein_blastp
+                if self.params.config.get("protein_input", False)
+                else _tools.regulated_protein
             )
+            _info.protein_search_info = protein_tool.get_version_information()
         if self.params.should_do_nucleotide_screening:
             _info.nucleotide_search_info = _tools.regulated_nt.get_version_information()
         if self.params.should_do_low_concern_screening:
@@ -848,8 +851,6 @@ class Screen:
         protein_only = self.params.config.get("protein_input", False)
         if protein_only:
             logger.info("\t...skipping low-concern blastn and cmscan (protein input).")
-            self.reset_query_statuses(ScreenStep.LOW_CONCERN_DNA, ScreenStatus.SKIP)
-            self.reset_query_statuses(ScreenStep.LOW_CONCERN_RNA, ScreenStatus.SKIP)
             rna_handler = None
             dna_handler = None
         else:

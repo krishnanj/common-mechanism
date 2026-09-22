@@ -7,7 +7,12 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from commec.config.constants import MAXIMUM_QUERY_LENGTH, MINIMUM_QUERY_LENGTH
-from commec.config.screen_io import IoValidationError, ScreenIO, substitute_non_iupac
+from commec.config.screen_io import (
+    IoValidationError,
+    ScreenIO,
+    substitute_non_iupac,
+    substitute_non_iupac_aa,
+)
 from commec.screen import ScreenArgumentParser, add_args
 
 
@@ -279,3 +284,47 @@ def test_parse_input_fasta_length_boundaries(
         nt_records = list(SeqIO.parse(nt_fasta, "fasta"))
 
     assert bool(nt_records) == expect_in_nt_fasta
+
+
+@pytest.mark.parametrize(
+    "sequence,expected,expected_substitutions",
+    [
+        pytest.param(
+            "ACDEFGHIKLMNPQRSTVWY",
+            "ACDEFGHIKLMNPQRSTVWY",
+            0,
+            id="standard_amino_acids_kept",
+        ),
+        pytest.param(
+            "BXZJUO",
+            "BXZJUO",
+            0,
+            id="iupac_ambiguity_codes_kept",
+        ),
+        pytest.param(
+            "acdefghik",
+            "ACDEFGHIK",
+            0,
+            id="lower_case_upper_cased_not_masked",
+        ),
+        pytest.param(
+            "MFLI*WEQ?",
+            "MFLIXWEQX",
+            2,
+            id="non_iupac_characters_substituted",
+        ),
+        pytest.param(
+            "MFL_WEQ",
+            "MFLXWEQ",
+            1,
+            id="non_ascii_placeholder_substituted",
+        ),
+    ],
+)
+def test_substitute_non_iupac_aa(sequence, expected, expected_substitutions):
+    record = SeqRecord(Seq(sequence), id="test_protein")
+    substitutions = substitute_non_iupac_aa(record)
+
+    assert str(record.seq) == expected
+    assert len(record.seq) == len(sequence)
+    assert substitutions == expected_substitutions

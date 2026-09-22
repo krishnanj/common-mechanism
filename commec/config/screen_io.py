@@ -131,7 +131,24 @@ class ScreenIO:
         for record in records:
             try:
                 protein = self.config.get("protein_input", False)
-                if not protein:
+                if protein:
+                    substitutions = substitute_non_iupac_aa(record)
+                    if substitutions:
+                        logger.warning(
+                            "Query %s: substituted %i non-IUPAC amino acid characters with 'X'",
+                            record.id,
+                            substitutions,
+                        )
+                        proportion_substituted = substitutions / len(record.seq)
+                        if proportion_substituted > NON_IUPAC_SUBSTITUTION_THRESHOLD:
+                            logger.warning(
+                                "Query %s: %.1f%% of characters were not IUPAC amino acid codes. "
+                                "This may not be a protein sequence; screening it may not "
+                                "give valid results.",
+                                record.id,
+                                proportion_substituted * 100,
+                            )
+                else:
                     substitutions = substitute_non_iupac(record)
                     if substitutions:
                         logger.warning(
@@ -344,6 +361,29 @@ class ScreenIO:
     @property
     def should_do_low_concern_screening(self) -> bool:
         return True
+
+
+def substitute_non_iupac_aa(record: SeqRecord) -> int:
+    """
+    Upper-case a record's sequence and replace every character that is not an IUPAC
+    amino acid code with `X` ("any amino acid"), modifying the record in place.
+
+    Returns the number of characters substituted.
+    """
+    iupac_codes = frozenset(IUPACData.extended_protein_letters)
+
+    bases = []
+    substitutions = 0
+    for aa in str(record.seq).upper():
+        if aa in iupac_codes:
+            bases.append(aa)
+        else:
+            bases.append("X")
+            substitutions += 1
+
+    record.seq = Seq("".join(bases))
+
+    return substitutions
 
 
 def substitute_non_iupac(record: SeqRecord) -> int:

@@ -78,6 +78,44 @@ def test_protein_query_with_numeric_suffix_in_name(tmp_path):
     assert result.queries["ORF_1"].status.screen_status == ScreenStatus.FLAG
 
 
+def test_protein_query_low_concern_hmmer_clears_taxonomy_flag(tmp_path):
+    """Low-concern HMMER hit must clear a taxonomy flag on protein input.
+
+    Previously, reset_query_statuses for LOW_CONCERN_DNA and LOW_CONCERN_RNA both
+    wrote ScreenStatus.SKIP to the shared low_concern field before parse_low_concern_hits
+    ran, so the HMMER low-concern step (which does work on protein input) never applied
+    its results and taxonomy flags were never cleared.
+
+    Note: biorisk hits are never clearable by the low-concern step (by design);
+    only taxonomy hits are eligible for clearance.
+    """
+    factory = ScreenTesterFactory("prot_lc_clears_tax", tmp_path)
+    factory.add_query("prot1", 60, is_protein=True)
+    factory.add_hit(
+        ScreenStep.TAXONOMY_AA,
+        "prot1",
+        start=1,
+        stop=55,
+        title="regulated pathogen protein",
+        accession="REG001",
+        taxid=12345,
+        species="Dangerous species",
+        genus="Dangerous",
+        superkingdom="Bacteria",
+        regulated=True,
+    )
+    factory.add_hit(
+        ScreenStep.LOW_CONCERN_PROTEIN,
+        "prot1",
+        start=1,
+        stop=55,
+        title="housekeeping_protein",
+        accession="HOUSE001",
+    )
+    result = factory.run()
+    assert result.queries["prot1"].status.screen_status == ScreenStatus.CLEARED_FLAG
+
+
 def test_protein_query_regulated_taxonomy_flags(tmp_path):
     """Protein query whose blastp best match is a regulated pathogen should be FLAG."""
     factory = ScreenTesterFactory("prot_tax_flag", tmp_path)
